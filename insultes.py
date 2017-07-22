@@ -75,9 +75,11 @@ async def execute_command(message):
 
     if 'msg' in ret:
         if 'channel' in ret:
-            await client.send_message(ret['channel'], ret['msg'])
+            channel = ret['channel']
         else:
-            await client.send_message(message.channel, ret['msg'])
+            channel = message.channel
+        for msg in ret['msg']:
+            await client.send_message(channel, msg)
     return
 
 
