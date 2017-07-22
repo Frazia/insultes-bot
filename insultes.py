@@ -46,45 +46,64 @@ for command in COMMANDS:
     command[1](cmd_subparser)
 
 
+async def execute_command(message):
+    try:
+        cmd = message.content[1:].split(' ')
+
+        commands = []
+        for item in SIMPLE_COMMANDS:
+            commands.append(item[0])
+        for item in COMMANDS:
+            commands.append(item[0])
+        if cmd[0] not in commands:
+            usage = 'Command "{}" not found.\nUse /help to see available commands'.format(cmd[0])
+            await client.send_message(message.channel, usage)
+            return
+
+        argument = parser.parse_args(cmd)
+        argument.message = message
+        argument.client = client
+        ret = argument.func(**vars(argument))
+    except Exception as e:
+        await client.send_message(message.channel, e)
+        return
+
+    if 'game' in ret:
+        await client.change_presence(game=ret['game'])
+    if 'status' in ret:
+        await client.change_presence(status=ret['status'])
+
+    if 'msg' in ret:
+        if 'channel' in ret:
+            await client.send_message(ret['channel'], ret['msg'])
+        else:
+            await client.send_message(message.channel, ret['msg'])
+    return
+
+
 @client.event
 async def on_message(message):
     # we do not want the bot to reply to itself
     if message.author == client.user:
         return
-
     if message.content.startswith('/'):
-        try:
-            cmd = message.content[1:].split(' ')
+        await execute_command(message)
 
-            commands = []
-            for item in SIMPLE_COMMANDS:
-                commands.append(item[0])
-            for item in COMMANDS:
-                commands.append(item[0])
-            if cmd[0] not in commands:
-                usage = 'Command "{}" not found.\nUse /help to see available commands'.format(cmd[0])
-                await client.send_message(message.channel, usage)
-                return
-
-            argument = parser.parse_args(cmd)
-            argument.message = message
-            argument.client = client
-            ret = argument.func(**vars(argument))
-        except Exception as e:
-            await client.send_message(message.channel, e)
-            return
-
-        if ret:
-            for msg in ret['msg']:
-                try:
-                    await client.send_message(ret['channel'], msg)
-                except KeyError:
-                    await client.send_message(message.channel, msg)
+@client.event
+async def on_message_edit(before, after):
+    if after.author == client.user:
+        return
+    if after.content.startswith('/'):
+        await execute_command(after)
 
 @client.event
 async def on_ready():
     print(client.user.name, ' ready !')
     print('------')
+
+    now_playing = discord.Game(name='/help to see available commands')
+    await client.change_presence(game=now_playing)
+
 
 client.run('MzM3OTAyMzg1NDU4NDQ2MzQ2.DFNt4g.NOXenryxEq5IvDdhs44Ijd--a8U')
 client.logout()
